@@ -106,8 +106,8 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 				'Null'      => $FieldNull,
 				'Default'   => $FieldDefault,
 				'Comment'   => $FieldComment,
-				'Create'    => sprintf('ALTER TABLE `%1$s`.`%2$s` ADD COLUMN `%3$s` %4$s',$DatabaseName, $TableName, $FieldName, $Definition ),
-				'Drop'      => sprintf('ALTER TABLE `%1$s`.`%2$s` DROP COLUMN `%3$s`',$DatabaseName, $TableName, $FieldName ),
+				'Create'    => sprintf('ALTER TABLE `%1$s` ADD COLUMN `%2$s` %3$s',$TableName, $FieldName, $Definition ),
+				'Drop'      => sprintf('ALTER TABLE `%1$s` DROP COLUMN `%2$s`',$TableName, $FieldName ),
 			);
 		}
 		
@@ -131,8 +131,8 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 		foreach( $Indexes as $IndexName => $Index ) {
 			$UniqueName = ($Index['Unique'] ? 'UNIQUE' : '');
 			$Definition = 'USING '.$Index['Type'].' ('.join(',', $Index['Columns']).')';
-			$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s`.`%2$s` ADD '.$UniqueName.' INDEX `%3$s` %4$s', $DatabaseName, $TableName, $IndexName, $Definition );
-			$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s`.`%2$s` DROP '.$UniqueName.' INDEX `%3$s`', $DatabaseName, $TableName, $IndexName );
+			$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s` ADD '.$UniqueName.' INDEX `%2$s` %3$s', $TableName, $IndexName, $Definition );
+			$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP '.$UniqueName.' INDEX `%2$s`', $TableName, $IndexName );
 		}
 		
 		$TableRes = $Connection->query( sprintf('SHOW CREATE TABLE `%1$s`.`%2$s`', $DatabaseName, $TableName) );
@@ -150,7 +150,7 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 			'Engine'     => $Engine,
 			'Collation'  => $Collation,
 			'Create'     => $Create,
-			'Drop'       => sprintf('DROP TABLE `%1$s`.`%2$s`', $DatabaseName, $TableName),
+			'Drop'       => sprintf('DROP TABLE `%1$s`', $TableName),
 		);
 	}
 	return $Schema;
