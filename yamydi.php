@@ -1,10 +1,11 @@
 <?php
 
-define('RET_OK_NO_CHANGES',       0);
-define('RET_OK_NO_RISKY_CHANGES', 1);
-define('RET_OK_NO_DATA_LOSS',     2);
-define('RET_OK',                  3);
-define('RET_ERROR',               4);
+define('RET_OK_NO_CHANGES',           0);
+define('RET_OK_WITH_SAFE_CHANGES',    1);
+define('RET_OK_WITH_PERF_ISSUES',     2);
+define('RET_OK_WITH_BROKEN_REQUESTS', 3);
+define('RET_OK_WITH_DATA_LOSS',       4);
+define('RET_ERROR',                   10);
 
 $Options = array();
 $Options[] = 'current-host:';
@@ -38,8 +39,9 @@ $Verbose = false;
 $Out = STDOUT;
 
 
-$HasChanges_NoRisky = false;
-$HasChanges_WithRisks = false;
+$HasChanges_Safe = false;
+$HasChanges_WithPerfIssues = false;
+$HasChanges_WithBrokenRequest = false;
 $HasChanges_WithDataLoss = false;
 
 try{
@@ -104,7 +106,7 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 				'Null'      => $FieldNull,
 				'Default'   => $FieldDefault,
 				'Comment'   => $FieldComment,
-				'Create'    => sprintf('ALTER TABLE `%1$s`.`%2$s` ADD `%3$s` %4$s',$DatabaseName, $TableName, $FieldName, $Definition ),
+				'Create'    => sprintf('ALTER TABLE `%1$s`.`%2$s` ADD COLUMN `%3$s` %4$s',$DatabaseName, $TableName, $FieldName, $Definition ),
 				'Drop'      => sprintf('ALTER TABLE `%1$s`.`%2$s` DROP COLUMN `%3$s`',$DatabaseName, $TableName, $FieldName ),
 			);
 		}
@@ -125,6 +127,12 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 			} else {
 				$Indexes[$IndexName]['Columns'][$TableAssoc['Seq_in_index']] = $TableAssoc['Column_name'];
 			}
+		}
+		foreach( $Indexes as $IndexName => $Index ) {
+			$UniqueName = ($Index['Unique'] ? 'UNIQUE' : '');
+			$Definition = 'USING '.$Index['Type'].' ('.join(',', $Index['Columns']).')';
+			$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s`.`%2$s` ADD '.$UniqueName.' INDEX `%3$s` %4$s', $DatabaseName, $TableName, $IndexName, $Definition );
+			$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s`.`%2$s` DROP '.$UniqueName.' INDEX `%3$s`', $DatabaseName, $TableName, $IndexName );
 		}
 		
 		$TableRes = $Connection->query( sprintf('SHOW CREATE TABLE `%1$s`.`%2$s`', $DatabaseName, $TableName) );
@@ -180,6 +188,7 @@ $ResultSQL = '';
 function CompareTableName( $S1, $S2 )       { return $S1 === $S2; }
 function CompareTableEngine( $S1, $S2 )     { return $S1 === $S2; }
 function CompareFieldName( $S1, $S2 )       { return $S1 === $S2; }
+function CompareIndexName( $S1, $S2 )       { return $S1 === $S2; }
 function CompareCollation( $S1, $S2 )       { return $S1 === $S2; }
 function CompareField( $S1, $S2 )    
 { 
@@ -190,6 +199,26 @@ function CompareField( $S1, $S2 )
 	$S1['Null']      ===  $S2['Null'] &&
 	$S1['Default']   ===  $S2['Default'] &&
 	$S1['Comment']   ===  $S2['Comment']; 
+}
+
+function CompareIndex( $S1, $S2 )    
+{ 
+    $ColumnsEqual = false;
+	if( count($S1['Columns']) === count($S2['Columns']) ) {
+		$ColumnsEqual = true;
+		foreach( $S1['Columns'] as $Index => $Value) {
+			if ( $S2['Columns'][$Index] !== $Value) {
+				$ColumnsEqual = true;
+				break;				
+			}
+		}		
+	}
+	
+	return 
+	$S1['Name']      ===  $S2['Name'] &&
+	$S1['Type']      ===  $S2['Type'] &&
+	$ColumnsEqual &&
+	$S1['Unique']    ===  $S2['Unique']; 
 }
 
 try
@@ -204,7 +233,7 @@ try
 			}
 		}
 		if(!$WantedTable) {
-			$ResultSQL .= $CurrentTable['Drop']."\n\n";
+			$ResultSQL .= $CurrentTable['Drop'].";\n\n";
 			$HasChanges_WithDataLoss = true;
 		}
 	}
@@ -219,8 +248,8 @@ try
 		}
 		
 		if(!$CurrentTable) {
-			$ResultSQL .= $WantedTable['Create']."\n\n";
-			$HasChanges_NoRisky = true;
+			$ResultSQL .= $WantedTable['Create'].";\n\n";
+			$HasChanges_Safe = true;
 		} else {
 			// Compare Engine
 			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
@@ -233,6 +262,42 @@ try
 			}
 			
 			// Compare indexes
+			foreach($CurrentTable['Indexes'] as $CurrentIndex) {
+				$WantedIndex = Null;
+				foreach($WantedTable['Indexes'] as $Index) {
+					if(CompareIndexName($CurrentIndex['Name'], $Index['Name'])) {
+						$WantedIndex = $Index;
+						break;
+					}
+				}
+				if(!$WantedIndex) {
+					$ResultSQL .= $CurrentIndex['Drop'].";\n\n";
+					// May have adverse effect on performances
+					$HasChanges_WithPerfIssues = true;
+				}
+			}
+			
+			foreach($WantedTable['Indexes'] as $WantedIndex) {
+				$CurrentIndex = Null;
+				foreach($CurrentTable['Indexes'] as $Index) {
+					if(CompareIndexName($WantedIndex['Name'], $Index['Name'])) {
+						$CurrentIndex = $Index;
+						break;
+					}
+				}
+				if(!$CurrentIndex) {
+					$ResultSQL .= $WantedIndex['Create'].";\n\n";
+					$HasChanges_Safe = true;
+				} else {
+					if( !CompareIndex($CurrentIndex, $WantedIndex) ) {
+						// Drop old index then create new one
+						// May have adverse effect on performances
+						$ResultSQL .= $CurrentIndex['Drop'].";\n\n";
+						$ResultSQL .= $WantedIndex['Create'].";\n\n";
+						$HasChanges_WithPerfIssues = true;
+					}
+				}
+			}
 			
 			// Compare fields
 			foreach($CurrentTable['Fields'] as $CurrentField) {
@@ -244,7 +309,7 @@ try
 					}
 				}
 				if(!$WantedField) {
-					$ResultSQL .= $WantedField['Drop']."\n\n";
+					$ResultSQL .= $CurrentField['Drop'].";\n\n";
 					$HasChanges_WithDataLoss = true;
 				}
 			}
@@ -258,8 +323,8 @@ try
 					}
 				}
 				if(!$CurrentField) {
-					$ResultSQL .= $CurrentField['Create']."\n\n";
-					$HasChanges_NoRisky = true;
+					$ResultSQL .= $WantedField['Create'].";\n\n";
+					$HasChanges_Safe = true;
 				} else {
 					$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
 					if( !CompareField($CurrentField, $WantedField) ) {
@@ -279,13 +344,14 @@ try
 } catch ( Exception $E ) {
 	ExceptionResult($E, 'Error when writing result');
 }
-
 if($HasChanges_WithDataLoss) {
-	exit (RET_OK);
-} else if ($HasChanges_WithRisks) {
-	exit (RET_OK_NO_DATA_LOSS);
-} else if ($HasChanges_NoRisky) {
-	exit (RET_OK_NO_RISKY_CHANGES);
+	exit (RET_OK_WITH_DATA_LOSS);
+} else if ($HasChanges_WithBrokenRequest) {
+	exit (RET_OK_WITH_BROKEN_REQUESTS);
+} else if ($HasChanges_WithPerfIssues) {
+	exit (RET_OK_WITH_PERF_ISSUES);
+} else if ($HasChanges_Safe) {
+	exit (RET_OK_WITH_SAFE_CHANGES);
 } else {
 	exit (RET_OK_NO_CHANGES);
 }
