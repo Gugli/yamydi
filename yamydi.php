@@ -334,9 +334,13 @@ try
 						fwrite(STDERR, $ErrorPrefix2. 'To :'."\n");
 						fwrite(STDERR, $ErrorPrefix2. "\t".$WantedField['Type'].' '.$WantedField['Collation']."\n");
 						
+						$ResultSQL .= '-- From :'.$CurrentField['Type'].' '.$CurrentField['Collation']."\n";
+						$ResultSQL .= '-- To   :'.$WantedField['Type'] .' '.$WantedField['Collation']."\n";
 						$ResultSQL .= $WantedField['Alter'].";\n\n";
 					} else if ( !CompareField_Safe($CurrentField, $WantedField) ) {	
 						// A field's type has changed but it's safe
+						$ResultSQL .= '-- From : NULL '.$CurrentField['Null'].'/ DEFAULT '.$CurrentField['Default'].'/ AUTOINCREMENT '.$CurrentField['AutoIncrement'].'/ COMMENT '.$CurrentField['Comment']."\n";
+						$ResultSQL .= '-- To   : NULL '.$WantedField['Null'] .'/ DEFAULT '.$WantedField['Default'] .'/ AUTOINCREMENT '.$WantedField['AutoIncrement'] .'/ COMMENT '.$WantedField['Comment'] ."\n";
 						$ResultSQL .= $WantedField['Alter'].";\n\n";
 						$HasChanges_Safe = true;
 					}
