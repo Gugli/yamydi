@@ -277,7 +277,7 @@ try
 				throw new ErrorException($ErrorPrefix1."Collation update not supported yet", 0, 0, __FILE__, __LINE__);
 			}
 			
-			// Compare indexes
+			// Compare indexes : Drop
 			foreach($CurrentTable['Indexes'] as $CurrentIndex) {
 				$WantedIndex = Null;
 				foreach($WantedTable['Indexes'] as $Index) {
@@ -290,28 +290,6 @@ try
 					$ResultSQL .= $CurrentIndex['Drop'].";\n\n";
 					// May have adverse effect on performances
 					$HasChanges_WithPerfIssues = true;
-				}
-			}
-			
-			foreach($WantedTable['Indexes'] as $WantedIndex) {
-				$CurrentIndex = Null;
-				foreach($CurrentTable['Indexes'] as $Index) {
-					if(CompareIndexName($WantedIndex['Name'], $Index['Name'])) {
-						$CurrentIndex = $Index;
-						break;
-					}
-				}
-				if(!$CurrentIndex) {
-					$ResultSQL .= $WantedIndex['Create'].";\n\n";
-					$HasChanges_Safe = true;
-				} else {
-					if( !CompareIndex($CurrentIndex, $WantedIndex) ) {
-						// Drop old index then create new one
-						// May have adverse effect on performances
-						$ResultSQL .= $CurrentIndex['Drop'].";\n\n";
-						$ResultSQL .= $WantedIndex['Create'].";\n\n";
-						$HasChanges_WithPerfIssues = true;
-					}
 				}
 			}
 			
@@ -361,6 +339,29 @@ try
 						// A field's type has changed but it's safe
 						$ResultSQL .= $WantedField['Alter'].";\n\n";
 						$HasChanges_Safe = true;
+					}
+				}
+			}
+			
+			// Compare indexes : Create
+			foreach($WantedTable['Indexes'] as $WantedIndex) {
+				$CurrentIndex = Null;
+				foreach($CurrentTable['Indexes'] as $Index) {
+					if(CompareIndexName($WantedIndex['Name'], $Index['Name'])) {
+						$CurrentIndex = $Index;
+						break;
+					}
+				}
+				if(!$CurrentIndex) {
+					$ResultSQL .= $WantedIndex['Create'].";\n\n";
+					$HasChanges_Safe = true;
+				} else {
+					if( !CompareIndex($CurrentIndex, $WantedIndex) ) {
+						// Drop old index then create new one
+						// May have adverse effect on performances
+						$ResultSQL .= $CurrentIndex['Drop'].";\n\n";
+						$ResultSQL .= $WantedIndex['Create'].";\n\n";
+						$HasChanges_WithPerfIssues = true;
 					}
 				}
 			}
