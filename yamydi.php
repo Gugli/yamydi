@@ -98,8 +98,8 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 				(($FieldNull ) ? 'NULL' : 'NOT NULL' ).' '.
 				(($FieldDefault) ? 'DEFAULT '.$FieldDefault : '' ).' '.
 				(($AutoIncrement) ? 'AUTO_INCREMENT': '' ).' '.
-				'COMMENT '.$Connection->real_escape_string($FieldComment).' '.
-				'COLLATE '.$FieldCollation
+				(($FieldComment) ? 'COMMENT '.$Connection->real_escape_string($FieldComment) : '' ).' '.
+				(($FieldCollation) ? 'COLLATE '.$FieldCollation : '')
 				;
 			
 			$Fields[$FieldName] = array(
