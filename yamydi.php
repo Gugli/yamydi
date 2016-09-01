@@ -98,18 +98,21 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 				(($FieldNull ) ? 'NULL' : 'NOT NULL' ).' '.
 				(($FieldDefault) ? 'DEFAULT '.$FieldDefault : '' ).' '.
 				(($AutoIncrement) ? 'AUTO_INCREMENT': '' ).' '.
-				'COMMENT \''.$FieldComment.'\''
+				'COMMENT '.$Connection->real_escape_string($FieldComment).' '.
+				'COLLATE '.$FieldCollation
 				;
 			
 			$Fields[$FieldName] = array(
-				'Name'      => $FieldName,
-				'Type'      => $FieldType,
-				'Collation' => $FieldCollation,
-				'Null'      => $FieldNull,
-				'Default'   => $FieldDefault,
-				'Comment'   => $FieldComment,
-				'Create'    => sprintf('ALTER TABLE `%1$s` ADD COLUMN `%2$s` %3$s',$TableName, $FieldName, $Definition ),
-				'Drop'      => sprintf('ALTER TABLE `%1$s` DROP COLUMN `%2$s`',$TableName, $FieldName ),
+				'Name'            => $FieldName,
+				'Type'            => $FieldType,
+				'Collation'       => $FieldCollation,
+				'Null'            => $FieldNull,
+				'Default'         => $FieldDefault,
+				'Comment'         => $FieldComment,
+				'AutoIncrement'   => $AutoIncrement,
+				'Create'          => sprintf('ALTER TABLE `%1$s` ADD COLUMN `%2$s` %3$s',$TableName, $FieldName, $Definition ),
+				'Drop'            => sprintf('ALTER TABLE `%1$s` DROP COLUMN `%2$s`',$TableName, $FieldName ),
+				'Alter'           => sprintf('ALTER TABLE `%1$s` MODIFY COLUMN `%2$s` %3$s',$TableName, $FieldName, $Definition ),
 			);
 		}
 		
@@ -192,15 +195,19 @@ function CompareTableEngine( $S1, $S2 )     { return $S1 === $S2; }
 function CompareFieldName( $S1, $S2 )       { return $S1 === $S2; }
 function CompareIndexName( $S1, $S2 )       { return $S1 === $S2; }
 function CompareCollation( $S1, $S2 )       { return $S1 === $S2; }
-function CompareField( $S1, $S2 )    
+function CompareField_Safe( $S1, $S2 )    
 { 
 	return 
-	$S1['Name']      ===  $S2['Name'] &&
+	$S1['Null']            ===  $S2['Null'] &&
+	$S1['Default']         ===  $S2['Default'] &&
+	$S1['AutoIncrement']   ===  $S2['AutoIncrement'] &&
+	$S1['Comment']         ===  $S2['Comment'];
+}
+function CompareField_Unsafe( $S1, $S2 )    
+{ 
+	return 
 	$S1['Type']      ===  $S2['Type'] &&
-	$S1['Collation'] ===  $S2['Collation'] &&
-	$S1['Null']      ===  $S2['Null'] &&
-	$S1['Default']   ===  $S2['Default'] &&
-	$S1['Comment']   ===  $S2['Comment']; 
+	$S1['Collation'] ===  $S2['Collation'];
 }
 
 function CompareIndex( $S1, $S2 )    
@@ -238,7 +245,7 @@ try
 			$ResultSQL .= $CurrentTable['Drop'].";\n\n";
 			$HasChanges_WithDataLoss = true;
 			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
-			fwrite(STDERR, $ErrorPrefix1. 'Table dropped');
+			fwrite(STDERR, $ErrorPrefix1. 'Table dropped\n');
 		}
 	}
 
@@ -316,7 +323,7 @@ try
 					$ResultSQL .= $CurrentField['Drop'].";\n\n";
 					$HasChanges_WithDataLoss = true;
 					$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
-					fwrite(STDERR, $ErrorPrefix2. 'Field dropped');
+					fwrite(STDERR, $ErrorPrefix2. 'Field dropped\n');
 				}
 			}
 			
@@ -332,13 +339,23 @@ try
 					$ResultSQL .= $WantedField['Create'].";\n\n";
 					$HasChanges_Safe = true;
 				} else {
-					if( !CompareField($CurrentField, $WantedField) ) {
+					if( !CompareField_Unsafe($CurrentField, $WantedField) ) {
 						// A field's type has changed
 						// Yamydi can't tell if its a loss or not
 						$HasChanges_WithDataAlteration = true;
 						
 						$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
-						fwrite(STDERR, $ErrorPrefix2. 'Field type has changed');
+						fwrite(STDERR, $ErrorPrefix2. 'Field type has changed\n');
+						fwrite(STDERR, $ErrorPrefix2. 'From :\n');
+						fwrite(STDERR, $ErrorPrefix2. '\t'.$CurrentField['Type'].' '.$CurrentField['Collation'].'\n');
+						fwrite(STDERR, $ErrorPrefix2. 'To:\n');
+						fwrite(STDERR, $ErrorPrefix2. '\t'.$WantedField['Type'].' '.$WantedField['Collation'].'\n');
+						
+						$ResultSQL .= $WantedField['Alter'].";\n\n";
+					} else if ( !CompareField_Safe($CurrentField, $WantedField) ) {	
+						// A field's type has changed but it's safe
+						$ResultSQL .= $WantedField['Alter'].";\n\n";
+						$HasChanges_Safe = true;
 					}
 				}
 			}
