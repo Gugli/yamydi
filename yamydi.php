@@ -1,11 +1,12 @@
 <?php
 
-define('RET_OK_NO_CHANGES',           0);
-define('RET_OK_WITH_SAFE_CHANGES',    1);
-define('RET_OK_WITH_PERF_ISSUES',     2);
-define('RET_OK_WITH_BROKEN_REQUESTS', 3);
-define('RET_OK_WITH_DATA_LOSS',       4);
-define('RET_ERROR',                   10);
+define('RET_OK_NO_CHANGES',             0);
+define('RET_OK_WITH_SAFE_CHANGES',      1);
+define('RET_OK_WITH_PERF_ISSUES',       2);
+define('RET_OK_WITH_BROKEN_REQUESTS',   3);
+define('RET_OK_WITH_DATA_ALTERATION',   4);
+define('RET_OK_WITH_DATA_LOSS',         5);
+define('RET_ERROR',                     10);
 
 $Options = array();
 $Options[] = 'current-host:';
@@ -43,6 +44,7 @@ $HasChanges_Safe = false;
 $HasChanges_WithPerfIssues = false;
 $HasChanges_WithBrokenRequest = false;
 $HasChanges_WithDataLoss = false;
+$HasChanges_WithDataAlteration = false;
 
 try{
 	$OptionsValues = getopt('', $Options);
@@ -235,6 +237,8 @@ try
 		if(!$WantedTable) {
 			$ResultSQL .= $CurrentTable['Drop'].";\n\n";
 			$HasChanges_WithDataLoss = true;
+			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
+			fwrite(STDERR, $ErrorPrefix1. 'Table dropped');
 		}
 	}
 
@@ -311,6 +315,8 @@ try
 				if(!$WantedField) {
 					$ResultSQL .= $CurrentField['Drop'].";\n\n";
 					$HasChanges_WithDataLoss = true;
+					$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
+					fwrite(STDERR, $ErrorPrefix2. 'Field dropped');
 				}
 			}
 			
@@ -326,9 +332,13 @@ try
 					$ResultSQL .= $WantedField['Create'].";\n\n";
 					$HasChanges_Safe = true;
 				} else {
-					$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
 					if( !CompareField($CurrentField, $WantedField) ) {
-						throw new ErrorException($ErrorPrefix2."Field update not supported yet", 0, 0, __FILE__, __LINE__);
+						// A field's type has changed
+						// Yamydi can't tell if its a loss or not
+						$HasChanges_WithDataAlteration = true;
+						
+						$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
+						fwrite(STDERR, $ErrorPrefix2. 'Field type has changed');
 					}
 				}
 			}
@@ -346,7 +356,9 @@ try
 }
 if($HasChanges_WithDataLoss) {
 	exit (RET_OK_WITH_DATA_LOSS);
-} else if ($HasChanges_WithBrokenRequest) {
+} else if ($HasChanges_WithDataAlteration) {
+	exit (RET_OK_WITH_DATA_ALTERATION);
+}  else if ($HasChanges_WithBrokenRequest) {
 	exit (RET_OK_WITH_BROKEN_REQUESTS);
 } else if ($HasChanges_WithPerfIssues) {
 	exit (RET_OK_WITH_PERF_ISSUES);
