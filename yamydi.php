@@ -245,7 +245,7 @@ try
 			$ResultSQL .= $CurrentTable['Drop'].";\n\n";
 			$HasChanges_WithDataLoss = true;
 			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
-			fwrite(STDERR, $ErrorPrefix1. 'Table dropped\n');
+			fwrite(STDERR, $ErrorPrefix1. 'Table dropped'."\n");
 		}
 	}
 
@@ -323,7 +323,7 @@ try
 					$ResultSQL .= $CurrentField['Drop'].";\n\n";
 					$HasChanges_WithDataLoss = true;
 					$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
-					fwrite(STDERR, $ErrorPrefix2. 'Field dropped\n');
+					fwrite(STDERR, $ErrorPrefix2. 'Field dropped'."\n");
 				}
 			}
 			
@@ -345,11 +345,11 @@ try
 						$HasChanges_WithDataAlteration = true;
 						
 						$ErrorPrefix2 = $ErrorPrefix1 . sprintf('[Field=%1$s]', $CurrentField['Name']);
-						fwrite(STDERR, $ErrorPrefix2. 'Field type has changed\n');
-						fwrite(STDERR, $ErrorPrefix2. 'From :\n');
-						fwrite(STDERR, $ErrorPrefix2. '\t'.$CurrentField['Type'].' '.$CurrentField['Collation'].'\n');
-						fwrite(STDERR, $ErrorPrefix2. 'To:\n');
-						fwrite(STDERR, $ErrorPrefix2. '\t'.$WantedField['Type'].' '.$WantedField['Collation'].'\n');
+						fwrite(STDERR, $ErrorPrefix2. 'Field type has changed'."\n");
+						fwrite(STDERR, $ErrorPrefix2. 'From :'."\n");
+						fwrite(STDERR, $ErrorPrefix2. "\t".$CurrentField['Type'].' '.$CurrentField['Collation']."\n");
+						fwrite(STDERR, $ErrorPrefix2. 'To :'."\n");
+						fwrite(STDERR, $ErrorPrefix2. "\t".$WantedField['Type'].' '.$WantedField['Collation']."\n");
 						
 						$ResultSQL .= $WantedField['Alter'].";\n\n";
 					} else if ( !CompareField_Safe($CurrentField, $WantedField) ) {	
