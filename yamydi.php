@@ -136,8 +136,13 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 		foreach( $Indexes as $IndexName => $Index ) {
 			$UniqueName = ($Index['Unique'] ? 'UNIQUE' : '');
 			$Definition = 'USING '.$Index['Type'].' ('.join(',', $Index['Columns']).')';
-			$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s` ADD '.$UniqueName.' INDEX `%2$s` %3$s', $TableName, $IndexName, $Definition );
-			$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP '.$UniqueName.' INDEX `%2$s`', $TableName, $IndexName );
+			if( $IndexName === 'PRIMARY' ) {
+				$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s` ADD PRIMARY KEY %2$s', $TableName, $Definition );
+				$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP PRIMARY KEY', $TableName );
+			} else {
+				$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s` ADD '.$UniqueName.' INDEX `%2$s` %3$s', $TableName, $IndexName, $Definition );
+				$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP '.$UniqueName.' INDEX `%2$s`', $TableName, $IndexName );
+			}
 		}
 		
 		$TableRes = $Connection->query( sprintf('SHOW CREATE TABLE `%1$s`.`%2$s`', $DatabaseName, $TableName) );
