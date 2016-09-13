@@ -93,15 +93,15 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 			$FieldComment   = $TableAssoc['Comment'];
 			
 			$AutoIncrement = ( strpos( $TableAssoc['Extra'], 'auto_increment' ) ? true : false);
-			$Definition = 
+			$Definition =
 				$FieldType.' '.
-				(($FieldNull)            ? 'NULL'                                                    : 'NOT NULL' ).' '.
-				(($FieldDefault != '')   ? 'DEFAULT '.$FieldDefault                                  : ''         ).' '.
-				(($AutoIncrement)        ? 'AUTO_INCREMENT'                                          : ''         ).' '.
-				(($FieldComment != '')   ? 'COMMENT '.$Connection->real_escape_string($FieldComment) : ''         ).' '.
-				(($FieldCollation != '') ? 'COLLATE '.$FieldCollation                                : ''         )
+				(($FieldNull)               ? 'NULL'                                                             : 'NOT NULL' ).' '.
+				(($FieldDefault !== null)   ? 'DEFAULT \''.$Connection->real_escape_string($FieldDefault).'\''   : ''         ).' '.
+				(($AutoIncrement)           ? 'AUTO_INCREMENT'                                                   : ''         ).' '.
+				(($FieldComment != '')      ? 'COMMENT \''.$Connection->real_escape_string($FieldComment).'\''   : ''         ).' '.
+				(($FieldCollation !== null) ? 'COLLATE \''.$Connection->real_escape_string($FieldCollation).'\'' : ''         )
 				;
-			
+				
 			$Fields[$FieldName] = array(
 				'Name'            => $FieldName,
 				'Type'            => $FieldType,
@@ -339,8 +339,18 @@ try
 						$ResultSQL .= $WantedField['Alter'].";\n\n";
 					} else if ( !CompareField_Safe($CurrentField, $WantedField) ) {	
 						// A field's type has changed but it's safe
-						$ResultSQL .= '-- From : NULL '.$CurrentField['Null'].'/ DEFAULT '.$CurrentField['Default'].'/ AUTOINCREMENT '.$CurrentField['AutoIncrement'].'/ COMMENT '.$CurrentField['Comment']."\n";
-						$ResultSQL .= '-- To   : NULL '. $WantedField['Null'].'/ DEFAULT '. $WantedField['Default'].'/ AUTOINCREMENT '. $WantedField['AutoIncrement'].'/ COMMENT '. $WantedField['Comment']."\n";
+						$ResultSQL .= '-- From : '.
+							'NULL '.$CurrentField['Null'].
+							'/ DEFAULT '. (($CurrentField['Default'] === null) ? 'NULL' : '\''.$CurrentField['Default'].'\'' ).
+							'/ AUTOINCREMENT '.$CurrentField['AutoIncrement'].
+							'/ COMMENT \''.$CurrentField['Comment'].'\''.
+							"\n";
+						$ResultSQL .= '-- To   : '.
+							'NULL '. $WantedField['Null'].
+							'/ DEFAULT '. (($WantedField['Default']  === null) ? 'NULL' : '\''.$WantedField['Default'].'\'' ).
+							'/ AUTOINCREMENT '. $WantedField['AutoIncrement'].
+							'/ COMMENT \''. $WantedField['Comment'].'\''.
+							"\n";
 						$ResultSQL .= $WantedField['Alter'].";\n\n";
 						$HasChanges_Safe = true;
 					}
