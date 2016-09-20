@@ -269,11 +269,11 @@ try
 		} else {
 			// Compare Engine
 			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
-			if( !CompareTableEngine($CurrentTable['Engine'], $CurrentTable['Engine']) ) {
+			if( !CompareTableEngine($CurrentTable['Engine'], $WantedTable['Engine']) ) {
 				throw new ErrorException($ErrorPrefix1."Engine update not supported yet", 0, 0, __FILE__, __LINE__);
 			}
 			// Compare Collation
-			if( !CompareCollation($CurrentTable['Collation'], $CurrentTable['Collation']) ) {
+			if( !CompareCollation($CurrentTable['Collation'], $WantedTable['Collation']) ) {
 				throw new ErrorException($ErrorPrefix1."Collation update not supported yet", 0, 0, __FILE__, __LINE__);
 			}
 			
