@@ -267,16 +267,7 @@ try
 			$ResultSQL .= $WantedTable['Create'].";\n\n";
 			$HasChanges_Safe = true;
 		} else {
-			// Compare Engine
 			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
-			if( !CompareTableEngine($CurrentTable['Engine'], $WantedTable['Engine']) ) {
-				$ResultSQL .= 'ALTER TABLE '.$CurrentTable['Name'].' ENGINE='.$WantedTable['Engine'].";\n\n";
-				$HasChanges_WithDataAlteration = true;
-			}
-			// Compare Collation
-			if( !CompareCollation($CurrentTable['Collation'], $WantedTable['Collation']) ) {
-				throw new ErrorException($ErrorPrefix1."Collation update not supported yet", 0, 0, __FILE__, __LINE__);
-			}
 			
 			// Compare indexes : Drop
 			foreach($CurrentTable['Indexes'] as $CurrentIndex) {
@@ -379,6 +370,16 @@ try
 						$HasChanges_WithPerfIssues = true;
 					}
 				}
+			}
+			
+			// Compare Engine
+			if( !CompareTableEngine($CurrentTable['Engine'], $WantedTable['Engine']) ) {
+				$ResultSQL .= 'ALTER TABLE '.$CurrentTable['Name'].' ENGINE='.$WantedTable['Engine'].";\n\n";
+				$HasChanges_WithDataAlteration = true;
+			}
+			// Compare Collation
+			if( !CompareCollation($CurrentTable['Collation'], $WantedTable['Collation']) ) {
+				throw new ErrorException($ErrorPrefix1."Collation update not supported yet", 0, 0, __FILE__, __LINE__);
 			}
 		}
 	}
