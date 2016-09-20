@@ -270,7 +270,8 @@ try
 			// Compare Engine
 			$ErrorPrefix1 = sprintf('[Table=%1$s]', $CurrentTable['Name']);
 			if( !CompareTableEngine($CurrentTable['Engine'], $WantedTable['Engine']) ) {
-				throw new ErrorException($ErrorPrefix1."Engine update not supported yet", 0, 0, __FILE__, __LINE__);
+				$ResultSQL .= 'ALTER TABLE '.$CurrentTable['Name'].' ENGINE='.$WantedTable['Engine'].";\n\n";
+				$HasChanges_WithDataAlteration = true;
 			}
 			// Compare Collation
 			if( !CompareCollation($CurrentTable['Collation'], $WantedTable['Collation']) ) {
