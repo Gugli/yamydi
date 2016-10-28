@@ -141,7 +141,7 @@ function GetDatabaseSchema( $Connection, $DatabaseName )
 				$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP PRIMARY KEY', $TableName );
 			} else {
 				$Indexes[$IndexName]['Create'] = sprintf('ALTER TABLE `%1$s` ADD '.$UniqueName.' INDEX `%2$s` %3$s', $TableName, $IndexName, $Definition );
-				$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP '.$UniqueName.' INDEX `%2$s`', $TableName, $IndexName );
+				$Indexes[$IndexName]['Drop'] = sprintf('ALTER TABLE `%1$s` DROP INDEX `%2$s`', $TableName, $IndexName );
 			}
 		}
 		
